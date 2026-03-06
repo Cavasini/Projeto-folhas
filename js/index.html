@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Teachable Machine Demo</title>
+	</head>
+	<body onload="init()">
+		<h2>My ML Model</h2>
+		<button onclick="init()">Start</button>
+		<button onclick="downloadResults()">Download Results</button>
+
+		<input
+			type="file"
+			id="imageUpload"
+			accept="image/*"
+		/>
+		<img
+			id="preview"
+			width="200"
+		/>
+		<button onclick="predictImage()">Predict</button>
+
+		<div id="webcam-container"></div>
+		<div id="label-container"></div>
+
+		<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+		<script>
+			const URLmachine = "https://teachablemachine.withgoogle.com/models/rAmBzGusz/"
+
+			let model, webcam, labelContainer, maxPredictions
+
+			async function init() {
+				const modelURL = URLmachine + "model.json"
+				const metadataURL = URLmachine + "metadata.json"
+
+				model = await tmImage.load(modelURL, metadataURL)
+				maxPredictions = model.getTotalClasses()
+
+				const flip = true
+
+				labelContainer = document.getElementById("label-container")
+				for (let i = 0; i < maxPredictions; i++) {
+					labelContainer.appendChild(document.createElement("div"))
+				}
+
+				window.requestAnimationFrame(loop)
+			}
+
+			async function loop() {
+				window.requestAnimationFrame(loop)
+			}
+
+			let results = []
+
+			function downloadResults() {
+				const dataStr = JSON.stringify(results, null, 2)
+
+				const blob = new Blob([dataStr], { type: "application/json" })
+				const url = URL.createObjectURL(blob)
+
+				const a = document.createElement("a")
+				a.href = url
+				a.download = "results.json"
+				a.click()
+
+				URL.revokeObjectURL(url)
+			}
+
+			async function predictImage() {
+				const image = document.getElementById("preview")
+				const prediction = await model.predict(image)
+
+				let resultEntry = {
+					fileName: currentFileName,
+					timestamp: new Date().toISOString(),
+					predictions: [],
+				}
+
+				console.log(labelContainer)
+
+				for (let i = 0; i < prediction.length; i++) {
+					resultEntry.predictions.push({
+						className: prediction[i].className,
+						probability: prediction[i].probability,
+					})
+
+					labelContainer.children[i].innerHTML =
+						prediction[i].className + ": " + prediction[i].probability.toFixed(2)
+				}
+
+				results.push(resultEntry)
+			}
+
+			let currentFileName = ""
+
+			document.getElementById("imageUpload").addEventListener("change", function (event) {
+				const file = event.target.files[0]
+				if (!file) return
+
+				currentFileName = file.name
+
+				const reader = new FileReader()
+
+				reader.onload = function (e) {
+					const img = document.getElementById("preview")
+
+					img.onload = () => {
+						console.log("Image loaded and ready for prediction")
+					}
+
+					img.src = e.target.result
+				}
+
+				reader.readAsDataURL(file)
+			})
+		</script>
+	</body>
+</html>
